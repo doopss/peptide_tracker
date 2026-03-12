@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   StatusBar,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -14,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../constants/theme';
 import { useAppStore, Peptide } from '../store/useAppStore';
 import { RootTabParamList } from '../navigation/types';
+import { useHapticFeedback } from '../utils/haptics';
+import { EmptyPeptides, EmptyLogs } from '../components/EmptyState';
 
 type DashboardNavigationProp = BottomTabNavigationProp<RootTabParamList, 'Home'>;
 
@@ -101,6 +104,8 @@ const PeptideCard = ({ peptide, isLogged, onPress }: PeptideCardProps) => {
 
 export default function DashboardScreen() {
   const navigation = useNavigation<DashboardNavigationProp>();
+  const haptics = useHapticFeedback();
+  const [refreshing, setRefreshing] = React.useState(false);
   
   // Get data from Zustand store
   const { peptides, logs, getAdherenceRate, getTodaysLogs } = useAppStore();
@@ -123,14 +128,32 @@ export default function DashboardScreen() {
     return 'Good evening';
   };
 
+  // Pull to refresh handler
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    haptics.light();
+    // Simulate refresh
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 500);
+  }, [haptics]);
+
   // Navigate to Log screen with selected peptide
   const handlePeptidePress = (peptide: Peptide) => {
+    haptics.selection();
     navigation.navigate('Log', { selectedPeptide: peptide });
   };
 
   // Navigate to Log screen without pre-selection
   const handleLogDosePress = () => {
+    haptics.medium();
     navigation.navigate('Log');
+  };
+
+  // Navigate to Library to add peptide
+  const handleAddPeptide = () => {
+    haptics.medium();
+    navigation.navigate('Library');
   };
 
   return (
@@ -140,6 +163,14 @@ export default function DashboardScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -167,16 +198,20 @@ export default function DashboardScreen() {
         </View>
 
         {/* Peptide List */}
-        <View style={styles.peptideList}>
-          {peptides.map((peptide) => (
-            <PeptideCard 
-              key={peptide.id} 
-              peptide={peptide} 
-              isLogged={isPeptideLoggedToday(peptide.id)}
-              onPress={() => handlePeptidePress(peptide)}
-            />
-          ))}
-        </View>
+        {peptides.length === 0 ? (
+          <EmptyPeptides onAdd={handleAddPeptide} />
+        ) : (
+          <View style={styles.peptideList}>
+            {peptides.filter(p => p.isActive).map((peptide) => (
+              <PeptideCard 
+                key={peptide.id} 
+                peptide={peptide} 
+                isLogged={isPeptideLoggedToday(peptide.id)}
+                onPress={() => handlePeptidePress(peptide)}
+              />
+            ))}
+          </View>
+        )}
 
         {/* Log Dose Button */}
         <TouchableOpacity style={styles.logDoseButton} onPress={handleLogDosePress}>
