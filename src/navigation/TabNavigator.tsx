@@ -1,18 +1,24 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
-import { RootTabParamList } from './types';
+import { RootTabParamList, RootStackParamList } from './types';
 
+// Screens
 import DashboardScreen from '../screens/DashboardScreen';
 import DoseLogScreen from '../screens/DoseLogScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import StatsScreen from '../screens/StatsScreen';
+import PeptideDetailScreen from '../screens/PeptideDetailScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
-type TabIconName = 'home' | 'add-circle' | 'grid' | 'calendar';
+type TabIconName = 'home' | 'add-circle' | 'grid' | 'calendar' | 'stats-chart' | 'settings';
 
 const getTabIcon = (routeName: string, focused: boolean): string => {
   const icons: Record<string, { active: string; inactive: string }> = {
@@ -20,13 +26,16 @@ const getTabIcon = (routeName: string, focused: boolean): string => {
     Log: { active: 'add-circle', inactive: 'add-circle-outline' },
     Library: { active: 'grid', inactive: 'grid-outline' },
     Schedule: { active: 'calendar', inactive: 'calendar-outline' },
+    Stats: { active: 'bar-chart', inactive: 'bar-chart-outline' },
+    Settings: { active: 'settings', inactive: 'settings-outline' },
   };
   
   const icon = icons[routeName] || icons.Home;
   return focused ? icon.active : icon.inactive;
 };
 
-export default function TabNavigator() {
+// Bottom Tab Navigator
+function TabNavigator() {
   return (
     <Tab.Navigator
       initialRouteName="Home"
@@ -65,11 +74,42 @@ export default function TabNavigator() {
         options={{ tabBarLabel: 'Library' }}
       />
       <Tab.Screen 
-        name="Schedule" 
-        component={ScheduleScreen}
-        options={{ tabBarLabel: 'Schedule' }}
+        name="Stats" 
+        component={StatsScreen}
+        options={{ tabBarLabel: 'Stats' }}
+      />
+      <Tab.Screen 
+        name="Settings" 
+        component={SettingsScreen}
+        options={{ tabBarLabel: 'Settings' }}
       />
     </Tab.Navigator>
+  );
+}
+
+// Root Stack Navigator (includes tabs + modal screens)
+export default function RootNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        presentation: 'modal',
+        animation: 'slide_from_bottom',
+      }}
+    >
+      <Stack.Screen 
+        name="MainTabs" 
+        component={TabNavigator} 
+      />
+      <Stack.Screen 
+        name="PeptideDetail" 
+        component={PeptideDetailScreen}
+        options={{
+          presentation: 'card',
+          animation: 'slide_from_right',
+        }}
+      />
+    </Stack.Navigator>
   );
 }
 
