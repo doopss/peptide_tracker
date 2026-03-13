@@ -8,12 +8,16 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../constants/theme';
 import { useAppStore, Peptide } from '../store/useAppStore';
 import { RootTabParamList } from '../navigation/types';
+import { useHapticFeedback } from '../utils/haptics';
+import { useToast } from '../components/Toast';
 
 type DoseLogRouteProp = RouteProp<RootTabParamList, 'Log'>;
 type DoseUnit = 'mcg' | 'mg';
@@ -21,6 +25,8 @@ type DoseUnit = 'mcg' | 'mg';
 export default function DoseLogScreen() {
   const route = useRoute<DoseLogRouteProp>();
   const navigation = useNavigation();
+  const haptics = useHapticFeedback();
+  const { showToast } = useToast();
   
   // Get data from Zustand store
   const { peptides, logDose } = useAppStore();
@@ -64,6 +70,7 @@ export default function DoseLogScreen() {
   };
 
   const handleNumberPress = (num: string) => {
+    haptics.light();
     if (num === '.' && dosageAmount.includes('.')) return;
     if (dosageAmount === '0' && num !== '.') {
       setDosageAmount(num);
@@ -74,6 +81,7 @@ export default function DoseLogScreen() {
   };
 
   const handleDelete = () => {
+    haptics.light();
     setDosageAmount(prev => {
       if (prev.length <= 1) return '0';
       return prev.slice(0, -1);
@@ -82,6 +90,7 @@ export default function DoseLogScreen() {
   };
 
   const handlePresetSelect = (preset: string) => {
+    haptics.medium();
     setSelectedPreset(preset);
     const parts = preset.split(' ');
     const value = parts[0];
@@ -91,25 +100,53 @@ export default function DoseLogScreen() {
   };
 
   const handlePeptideSelect = (peptide: Peptide) => {
+    haptics.selection();
     setSelectedPeptide(peptide);
     setDosageAmount(String(peptide.dose));
     setSelectedUnit(peptide.unit);
     setSelectedPreset('');
     setShowPeptidePicker(false);
+    showToast(`Selected ${peptide.name}`, 'info');
   };
 
   const handleConfirm = () => {
     const amount = parseFloat(dosageAmount);
-    if (!isNaN(amount) && amount > 0) {
-      logDose(selectedPeptide.id, amount);
-      // Navigate back to home after logging
-      navigation.goBack();
+    
+    // Validation
+    if (isNaN(amount)) {
+      haptics.error();
+      showToast('Please enter a valid number', 'error');
+      return;
     }
+    
+    if (amount <= 0) {
+      haptics.error();
+      showToast('Dose must be greater than 0', 'error');
+      return;
+    }
+    
+    if (amount > 10000) {
+      haptics.error();
+      showToast('Dose seems unusually high. Please check.', 'warning');
+      return;
+    }
+    
+    // Success
+    haptics.success();
+    logDose(selectedPeptide.id, amount);
+    showToast(`Logged ${amount} ${selectedUnit} of ${selectedPeptide.name}`, 'success');
+    
+    // Navigate back to home after logging
+    navigation.goBack();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
       
       {/* Header */}
       <View style={styles.header}>
@@ -257,6 +294,7 @@ export default function DoseLogScreen() {
           </View>
         </View>
       </Modal>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -265,6 +303,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  keyboardView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
