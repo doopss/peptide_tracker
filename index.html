@@ -256,6 +256,13 @@
             render();
         }
         
+        function deleteDose(id) {
+            if (!confirm('Delete this dose log?')) return;
+            doseLogs = doseLogs.filter(l => l.id !== id);
+            saveData();
+            render();
+        }
+        
         function logDose(id) {
             const p = peptides.find(x => x.id === id);
             if (!p) return;
@@ -361,7 +368,7 @@
             } else {
                 logContent.innerHTML = doseLogs.slice(0, 20).map(l => {
                     const p = peptides.find(x => x.id === l.peptideId);
-                    return `<div class="card"><div style="display: flex; justify-content: space-between;"><span>${p ? p.name : 'Unknown'}</span> <span style="color: #6366F1;">${l.dose}mg</span></div><div style="color: #888; font-size: 12px; margin-top: 4px;">${new Date(l.date).toLocaleString()}</div></div>`;
+                    return `<div class="card"><div style="display: flex; justify-content: space-between; align-items: center;"><div><span>${p ? p.name : 'Unknown'}</span> <span style="color: #6366F1;">${l.dose}mg</span></div><button onclick="deleteDose('${l.id}')" style="background: transparent; border: none; color: #EF4444; font-size: 18px; padding: 4px;">🗑️</button></div><div style="color: #888; font-size: 12px; margin-top: 4px;">${new Date(l.date).toLocaleString()}</div></div>`;
                 }).join('');
             }
             
