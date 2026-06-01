@@ -525,10 +525,17 @@
             if (!isInCycle(peptide, date)) return false;
             
             if (peptide.schedule.type === 'interval') {
-                if (!peptide.lastDose) return true;
-                const lastDose = new Date(peptide.lastDose);
-                const diffDays = Math.floor((date - lastDose) / (1000 * 60 * 60 * 24));
-                return diffDays > 0 && diffDays % peptide.schedule.days === 0;
+                // Use peptide creation as anchor date (stored in id as timestamp)
+                const anchorDate = new Date(parseInt(peptide.id));
+                anchorDate.setHours(0, 0, 0, 0);
+                const checkDate = new Date(date);
+                checkDate.setHours(0, 0, 0, 0);
+                
+                const diffDays = Math.floor((checkDate - anchorDate) / (1000 * 60 * 60 * 24));
+                
+                // Day 0 is first dose, then every X days after
+                if (diffDays < 0) return false;
+                return diffDays % peptide.schedule.days === 0;
             } else {
                 return peptide.schedule.days.includes(date.getDay());
             }
