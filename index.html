@@ -21,17 +21,37 @@
             background: #1E1E2E; padding: 12px 0; border-top: 1px solid #333;
             max-width: 480px; margin: 0 auto;
         }
-        .nav button { background: transparent; border: none; color: #888; font-size: 12px; padding: 4px 8px; }
+        .nav button { background: transparent; border: none; color: #888; font-size: 11px; padding: 4px 8px; }
         .nav button.active { color: #6366F1; }
         .tab { display: none; }
         .tab.active { display: block; }
         .card { background: #1E1E2E; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
         .btn { padding: 12px 20px; background: #6366F1; border: none; border-radius: 8px; color: white; cursor: pointer; }
+        .btn-secondary { background: #333; }
         input, select, textarea { 
             width: 100%; padding: 12px; background: #0A0A0F; 
             border: 1px solid #333; border-radius: 8px; color: white; margin-bottom: 12px;
         }
         .empty { text-align: center; padding: 40px; color: #888; }
+        .day-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+        .day-btn { 
+            padding: 8px 12px; background: #0A0A0F; border: 1px solid #333; 
+            border-radius: 6px; color: #888; cursor: pointer; font-size: 12px;
+        }
+        .day-btn.selected { background: #6366F1; color: white; border-color: #6366F1; }
+        .schedule-type { margin-bottom: 16px; }
+        .schedule-type label { display: block; margin-bottom: 8px; color: #888; font-size: 14px; }
+        .next-dose { color: #22C55E; font-size: 12px; margin-top: 4px; }
+        .next-dose.overdue { color: #EF4444; }
+        .dose-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 2px; }
+        .dose-dot.logged { background: #22C55E; }
+        .dose-dot.scheduled { background: #F59E0B; }
+        .calendar-day { 
+            display: inline-block; width: 14%; text-align: center; padding: 8px 0; 
+            font-size: 12px; min-height: 40px;
+        }
+        .calendar-day-name { color: #888; font-size: 10px; }
+        .calendar-grid { display: flex; flex-wrap: wrap; background: #1E1E2E; border-radius: 12px; padding: 8px; }
     </style>
 </head>
 <body>
@@ -51,23 +71,60 @@
                 <div id="log-content"></div>
             </div>
             
+            <!-- Calendar Tab -->
+            <div id="tab-calendar" class="tab">
+                <h2>Calendar</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <button class="btn btn-secondary" onclick="prevMonth()">←</button>
+                    <h3 id="calendar-month"></h3>
+                    <button class="btn btn-secondary" onclick="nextMonth()">→</button>
+                </div>
+                <div class="calendar-grid" id="calendar-grid"></div>
+                <div style="margin-top: 16px; display: flex; gap: 20px; justify-content: center;">
+                    <span><span class="dose-dot logged"></span> Logged</span>
+                    <span><span class="dose-dot scheduled"></span> Scheduled</span>
+                </div>
+            </div>
+            
             <!-- Library Tab -->
             <div id="tab-library" class="tab">
                 <h2>Library</h2>
                 <button class="btn" onclick="showAddForm()">+ Add Peptide</button>
+                
                 <div id="add-form" style="display:none; margin-top: 16px;">
                     <input type="text" id="new-name" placeholder="Peptide name">
                     <input type="number" id="new-dose" placeholder="Dose (mg)">
-                    <input type="number" id="new-freq" placeholder="Every X days" value="1">
-                    <button class="btn" onclick="addPeptide()">Save</button>
+                    
+                    <div class="schedule-type">
+                        <label>Schedule Type:</label>
+                        <select id="new-schedule-type" onchange="updateScheduleUI()">
+                            <option value="interval">Every X Days</option>
+                            <option value="days">Specific Days</option>
+                        </select>
+                    </div>
+                    
+                    <div id="interval-input">
+                        <input type="number" id="new-interval" placeholder="Every X days" value="1" min="1">
+                    </div>
+                    
+                    <div id="days-input" style="display:none;">
+                        <label style="color: #888; font-size: 14px; display: block; margin-bottom: 8px;">Select Days:</label>
+                        <div class="day-selector">
+                            <button type="button" class="day-btn" data-day="0" onclick="toggleDay(this)">Sun</button>
+                            <button type="button" class="day-btn" data-day="1" onclick="toggleDay(this)">Mon</button>
+                            <button type="button" class="day-btn" data-day="2" onclick="toggleDay(this)">Tue</button>
+                            <button type="button" class="day-btn" data-day="3" onclick="toggleDay(this)">Wed</button>
+                            <button type="button" class="day-btn" data-day="4" onclick="toggleDay(this)">Thu</button>
+                            <button type="button" class="day-btn" data-day="5" onclick="toggleDay(this)">Fri</button>
+                            <button type="button" class="day-btn" data-day="6" onclick="toggleDay(this)">Sat</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn" onclick="addPeptide()">Save Peptide</button>
+                    <button class="btn btn-secondary" onclick="hideAddForm()" style="margin-left: 8px;">Cancel</button>
                 </div>
-                <div id="library-content"></div>
-            </div>
-            
-            <!-- Calendar Tab -->
-            <div id="tab-calendar" class="tab">
-                <h2>Calendar</h2>
-                <p style="color: #888;">Coming soon...</p>
+                
+                <div id="library-content" style="margin-top: 16px;"></div>
             </div>
             
             <!-- Settings Tab -->
@@ -75,6 +132,7 @@
                 <h2>Settings</h2>
                 <div class="card">
                     <p>Peptides: <span id="settings-count">0</span></p>
+                    <p>Doses Logged: <span id="settings-doses">0</span></p>
                     <button class="btn" onclick="clearData()" style="background: #EF4444; margin-top: 12px;">Clear All Data</button>
                 </div>
             </div>
@@ -92,6 +150,12 @@
     <script>
         let peptides = [];
         let doseLogs = [];
+        let currentMonth = new Date();
+        let selectedDays = [];
+        
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                           'July', 'August', 'September', 'October', 'November', 'December'];
         
         // Load data
         try {
@@ -114,83 +178,74 @@
             document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
             event.target.classList.add('active');
-            render();
+            if (tab === 'calendar') renderCalendar();
+            else render();
         }
         
-        function render() {
-            // Home
-            const homeContent = document.getElementById('home-content');
-            if (peptides.length === 0) {
-                homeContent.innerHTML = '<div class="empty"><p>No peptides added yet.</p><button class="btn" onclick="switchTab(\'library\')">Add First Peptide</button></div>';
+        function updateScheduleUI() {
+            const type = document.getElementById('new-schedule-type').value;
+            document.getElementById('interval-input').style.display = type === 'interval' ? 'block' : 'none';
+            document.getElementById('days-input').style.display = type === 'days' ? 'block' : 'none';
+        }
+        
+        function toggleDay(btn) {
+            const day = parseInt(btn.dataset.day);
+            btn.classList.toggle('selected');
+            if (selectedDays.includes(day)) {
+                selectedDays = selectedDays.filter(d => d !== day);
             } else {
-                homeContent.innerHTML = peptides.map(p => `
-                    <div class="card">
-                        <h3>${p.name}</h3>
-                        <p>${p.dose}mg • Every ${p.freq} day${p.freq > 1 ? 's' : ''}</p>
-                        <button class="btn" onclick="logDose('${p.id}')" style="margin-top: 8px;">Log Dose</button>
-                    </div>
-                `).join('');
+                selectedDays.push(day);
             }
-            
-            // Log
-            const logContent = document.getElementById('log-content');
-            if (doseLogs.length === 0) {
-                logContent.innerHTML = '<div class="empty"><p>No doses logged yet.</p></div>';
-            } else {
-                logContent.innerHTML = doseLogs.slice(0, 10).map(l => {
-                    const p = peptides.find(x => x.id === l.peptideId);
-                    return `<div class="card"><span>${p ? p.name : 'Unknown'}</span> <span style="color: #6366F1;">${l.dose}mg</span> <span style="color: #888; font-size: 12px;">${new Date(l.date).toLocaleString()}</span></div>`;
-                }).join('');
-            }
-            
-            // Library
-            document.getElementById('library-content').innerHTML = peptides.map(p => `
-                <div class="card">
-                    <h3>${p.name}</h3>
-                    <p>${p.dose}mg • Every ${p.freq} days</p>
-                    <button onclick="deletePeptide('${p.id}')" style="background: transparent; border: none; color: #EF4444; margin-top: 8px;">🗑️ Delete</button>
-                </div>
-            `).join('');
-            
-            // Settings
-            document.getElementById('settings-count').textContent = peptides.length;
+            selectedDays.sort();
         }
         
         function showAddForm() {
-            const form = document.getElementById('add-form');
-            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            document.getElementById('add-form').style.display = 'block';
+            selectedDays = [];
+            document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
+        }
+        
+        function hideAddForm() {
+            document.getElementById('add-form').style.display = 'none';
+            document.getElementById('new-name').value = '';
+            document.getElementById('new-dose').value = '';
+            document.getElementById('new-interval').value = '1';
+            selectedDays = [];
+            document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
         }
         
         function addPeptide() {
-            const name = document.getElementById('new-name').value;
+            const name = document.getElementById('new-name').value.trim();
             const dose = parseFloat(document.getElementById('new-dose').value) || 0;
-            const freq = parseInt(document.getElementById('new-freq').value) || 1;
+            const scheduleType = document.getElementById('new-schedule-type').value;
             
-            if (!name) return;
+            if (!name) {
+                alert('Please enter a peptide name');
+                return;
+            }
             
-            peptides.push({ id: Date.now().toString(), name, dose, freq });
-            saveData();
+            let schedule;
+            if (scheduleType === 'interval') {
+                const interval = parseInt(document.getElementById('new-interval').value) || 1;
+                schedule = { type: 'interval', days: interval };
+            } else {
+                if (selectedDays.length === 0) {
+                    alert('Please select at least one day');
+                    return;
+                }
+                schedule = { type: 'days', days: selectedDays };
+            }
             
-            document.getElementById('new-name').value = '';
-            document.getElementById('new-dose').value = '';
-            document.getElementById('new-freq').value = '1';
-            document.getElementById('add-form').style.display = 'none';
-            render();
-        }
-        
-        function logDose(id) {
-            const p = peptides.find(x => x.id === id);
-            if (!p) return;
-            
-            doseLogs.unshift({
-                id: Date.now().toString(),
-                peptideId: id,
-                dose: p.dose,
-                date: new Date().toISOString()
+            peptides.push({ 
+                id: Date.now().toString(), 
+                name, 
+                dose, 
+                schedule,
+                lastDose: null
             });
             saveData();
+            hideAddForm();
             render();
-            alert('Dose logged!');
         }
         
         function deletePeptide(id) {
@@ -199,6 +254,179 @@
             doseLogs = doseLogs.filter(l => l.peptideId !== id);
             saveData();
             render();
+        }
+        
+        function logDose(id) {
+            const p = peptides.find(x => x.id === id);
+            if (!p) return;
+            
+            p.lastDose = new Date().toISOString();
+            doseLogs.unshift({
+                id: Date.now().toString(),
+                peptideId: id,
+                dose: p.dose,
+                date: p.lastDose
+            });
+            saveData();
+            render();
+        }
+        
+        function getScheduleText(schedule) {
+            if (schedule.type === 'interval') {
+                return `Every ${schedule.days} day${schedule.days > 1 ? 's' : ''}`;
+            } else {
+                const dayNames = schedule.days.map(d => ['Su','M','Tu','W','Th','F','Sa'][d]).join(', ');
+                return dayNames;
+            }
+        }
+        
+        function isScheduledForDate(peptide, date) {
+            if (peptide.schedule.type === 'interval') {
+                if (!peptide.lastDose) return true;
+                const lastDose = new Date(peptide.lastDose);
+                const diffDays = Math.floor((date - lastDose) / (1000 * 60 * 60 * 24));
+                return diffDays > 0 && diffDays % peptide.schedule.days === 0;
+            } else {
+                return peptide.schedule.days.includes(date.getDay());
+            }
+        }
+        
+        function getNextDose(peptide) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (peptide.schedule.type === 'interval') {
+                if (!peptide.lastDose) return 'Today';
+                const lastDose = new Date(peptide.lastDose);
+                lastDose.setHours(0, 0, 0, 0);
+                const nextDose = new Date(lastDose);
+                nextDose.setDate(lastDose.getDate() + peptide.schedule.days);
+                
+                const diffDays = Math.ceil((nextDose - today) / (1000 * 60 * 60 * 24));
+                if (diffDays < 0) return '⚠️ Overdue!';
+                if (diffDays === 0) return 'Today';
+                return `In ${diffDays} day${diffDays > 1 ? 's' : ''}`;
+            } else {
+                // Specific days schedule
+                const days = peptide.schedule.days.sort((a, b) => a - b);
+                const todayDay = today.getDay();
+                
+                // Find next scheduled day
+                let nextDay = days.find(d => d > todayDay);
+                if (nextDay === undefined) {
+                    nextDay = days[0]; // Wrap to next week
+                }
+                
+                let daysUntil = nextDay - todayDay;
+                if (daysUntil <= 0) daysUntil += 7;
+                
+                // Check if already logged today
+                const todayLogged = doseLogs.some(l => {
+                    if (l.peptideId !== peptide.id) return false;
+                    const logDate = new Date(l.date);
+                    return logDate.toDateString() === today.toDateString();
+                });
+                
+                if (daysUntil === 0 && todayLogged) {
+                    return 'Done for today';
+                }
+                if (daysUntil === 0) return 'Today';
+                return `In ${daysUntil} day${daysUntil > 1 ? 's' : ''} (${dayNames[nextDay]})`;
+            }
+        }
+        
+        function render() {
+            // Home
+            const homeContent = document.getElementById('home-content');
+            if (peptides.length === 0) {
+                homeContent.innerHTML = '<div class="empty"><p>No peptides yet.</p><button class="btn" onclick="switchTab(\'library\')">Add Peptide</button></div>';
+            } else {
+                homeContent.innerHTML = peptides.map(p => {
+                    const nextDose = getNextDose(p);
+                    const isOverdue = nextDose.includes('Overdue');
+                    return `
+                    <div class="card">
+                        <h3>${p.name}</h3>
+                        <p>${p.dose}mg • ${getScheduleText(p.schedule)}</p>
+                        <p class="next-dose ${isOverdue ? 'overdue' : ''}">Next: ${nextDose}</p>
+                        <button class="btn" onclick="logDose('${p.id}')" style="margin-top: 8px;">Log Dose</button>
+                    </div>
+                `}).join('');
+            }
+            
+            // Log
+            const logContent = document.getElementById('log-content');
+            if (doseLogs.length === 0) {
+                logContent.innerHTML = '<div class="empty"><p>No doses logged.</p></div>';
+            } else {
+                logContent.innerHTML = doseLogs.slice(0, 20).map(l => {
+                    const p = peptides.find(x => x.id === l.peptideId);
+                    return `<div class="card"><div style="display: flex; justify-content: space-between;"><span>${p ? p.name : 'Unknown'}</span> <span style="color: #6366F1;">${l.dose}mg</span></div><div style="color: #888; font-size: 12px; margin-top: 4px;">${new Date(l.date).toLocaleString()}</div></div>`;
+                }).join('');
+            }
+            
+            // Library
+            document.getElementById('library-content').innerHTML = peptides.map(p => `
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3>${p.name}</h3>
+                            <p>${p.dose}mg • ${getScheduleText(p.schedule)}</p>
+                        </div>
+                        <button onclick="deletePeptide('${p.id}')" style="background: transparent; border: none; font-size: 20px;">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Settings
+            document.getElementById('settings-count').textContent = peptides.length;
+            document.getElementById('settings-doses').textContent = doseLogs.length;
+        }
+        
+        function renderCalendar() {
+            document.getElementById('calendar-month').textContent = 
+                monthNames[currentMonth.getMonth()] + ' ' + currentMonth.getFullYear();
+            
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            let html = '';
+            // Day names
+            dayNames.forEach(d => html += `<div class="calendar-day calendar-day-name">${d}</div>`);
+            // Empty cells
+            for (let i = 0; i < firstDay; i++) html += '<div class="calendar-day"></div>';
+            // Days
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dayLogs = doseLogs.filter(l => {
+                    const d = new Date(l.date);
+                    return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year;
+                });
+                
+                const scheduled = peptides.filter(p => isScheduledForDate(p, date));
+                const loggedPeptideIds = new Set(dayLogs.map(l => l.peptideId));
+                const pending = scheduled.filter(p => !loggedPeptideIds.has(p.id));
+                
+                let dots = '';
+                dayLogs.forEach(() => dots += '<span class="dose-dot logged"></span>');
+                pending.forEach(() => dots += '<span class="dose-dot scheduled"></span>');
+                
+                html += `<div class="calendar-day">${day}<br>${dots}</div>`;
+            }
+            
+            document.getElementById('calendar-grid').innerHTML = html;
+        }
+        
+        function prevMonth() {
+            currentMonth.setMonth(currentMonth.getMonth() - 1);
+            renderCalendar();
+        }
+        
+        function nextMonth() {
+            currentMonth.setMonth(currentMonth.getMonth() + 1);
+            renderCalendar();
         }
         
         function clearData() {
