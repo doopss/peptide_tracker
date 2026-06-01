@@ -164,6 +164,8 @@
                             <input type="number" id="new-cycle-off" placeholder="Off" min="1">
                             <span>days OFF</span>
                         </div>
+                        <label style="color: #888; font-size: 14px; display: block; margin-top: 8px;">Cycle Start Date:</label>
+                        <input type="date" id="new-cycle-start" style="color-scheme: dark;">
                         <p style="color: #666; font-size: 12px;">Leave blank for no cycle (always on)</p>
                     </div>
                     
@@ -212,6 +214,8 @@
                             <input type="number" id="edit-cycle-off" placeholder="Off" min="1">
                             <span>days OFF</span>
                         </div>
+                        <label style="color: #888; font-size: 14px; display: block; margin-top: 8px;">Cycle Start Date:</label>
+                        <input type="date" id="edit-cycle-start" style="color-scheme: dark;">
                         <p style="color: #666; font-size: 12px;">Leave blank for no cycle</p>
                     </div>
                     
@@ -349,6 +353,7 @@
             document.getElementById('new-interval').value = '1';
             document.getElementById('new-cycle-on').value = '';
             document.getElementById('new-cycle-off').value = '';
+            document.getElementById('new-cycle-start').value = '';
             selectedDays = [];
             document.querySelectorAll('#add-form .day-btn').forEach(b => b.classList.remove('selected'));
         }
@@ -376,9 +381,11 @@
             if (p.cycle) {
                 document.getElementById('edit-cycle-on').value = p.cycle.onDays;
                 document.getElementById('edit-cycle-off').value = p.cycle.offDays;
+                document.getElementById('edit-cycle-start').value = p.cycle.startDate ? p.cycle.startDate.split('T')[0] : '';
             } else {
                 document.getElementById('edit-cycle-on').value = '';
                 document.getElementById('edit-cycle-off').value = '';
+                document.getElementById('edit-cycle-start').value = '';
             }
             
             updateEditScheduleUI();
@@ -398,6 +405,7 @@
             const scheduleType = document.getElementById('new-schedule-type').value;
             const cycleOn = parseInt(document.getElementById('new-cycle-on').value);
             const cycleOff = parseInt(document.getElementById('new-cycle-off').value);
+            const cycleStartInput = document.getElementById('new-cycle-start').value;
             
             if (!name) {
                 alert('Please enter a peptide name');
@@ -418,7 +426,8 @@
             
             let cycle = null;
             if (cycleOn && cycleOff) {
-                cycle = { onDays: cycleOn, offDays: cycleOff, startDate: new Date().toISOString() };
+                const startDate = cycleStartInput ? new Date(cycleStartInput).toISOString() : new Date().toISOString();
+                cycle = { onDays: cycleOn, offDays: cycleOff, startDate: startDate };
             }
             
             peptides.push({ 
@@ -455,10 +464,10 @@
             
             const cycleOn = parseInt(document.getElementById('edit-cycle-on').value);
             const cycleOff = parseInt(document.getElementById('edit-cycle-off').value);
+            const cycleStartInput = document.getElementById('edit-cycle-start').value;
             if (cycleOn && cycleOff) {
-                if (!p.cycle) p.cycle = { startDate: new Date().toISOString() };
-                p.cycle.onDays = cycleOn;
-                p.cycle.offDays = cycleOff;
+                const startDate = cycleStartInput ? new Date(cycleStartInput).toISOString() : (p.cycle ? p.cycle.startDate : new Date().toISOString());
+                p.cycle = { onDays: cycleOn, offDays: cycleOff, startDate: startDate };
             } else {
                 p.cycle = null;
             }
