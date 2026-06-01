@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
 import { RootTabParamList, RootStackParamList } from './types';
@@ -16,9 +17,11 @@ import StatsScreen from '../screens/StatsScreen';
 import PeptideDetailScreen from '../screens/PeptideDetailScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
-const Stack = createNativeStackNavigator<RootStackParamList>();
 
-type TabIconName = 'home' | 'add-circle' | 'grid' | 'calendar' | 'stats-chart' | 'settings';
+// Use regular stack for web, native stack for mobile
+const Stack = Platform.OS === 'web' 
+  ? createStackNavigator<RootStackParamList>()
+  : createNativeStackNavigator<RootStackParamList>();
 
 const getTabIcon = (routeName: string, focused: boolean): string => {
   const icons: Record<string, { active: string; inactive: string }> = {
@@ -89,14 +92,16 @@ function TabNavigator() {
 
 // Root Stack Navigator (includes tabs + modal screens)
 export default function RootNavigator() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
+  const screenOptions = Platform.OS === 'web' 
+    ? { headerShown: false }
+    : {
         headerShown: false,
         presentation: 'modal',
         animation: 'slide_from_bottom',
-      }}
-    >
+      };
+
+  return (
+    <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen 
         name="MainTabs" 
         component={TabNavigator} 
@@ -104,10 +109,10 @@ export default function RootNavigator() {
       <Stack.Screen 
         name="PeptideDetail" 
         component={PeptideDetailScreen}
-        options={{
-          presentation: 'card',
-          animation: 'slide_from_right',
-        }}
+        options={Platform.OS === 'web' 
+          ? { headerShown: false }
+          : { presentation: 'card', animation: 'slide_from_right' }
+        }
       />
     </Stack.Navigator>
   );
